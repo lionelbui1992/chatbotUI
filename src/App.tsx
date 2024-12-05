@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useContext, useEffect, useState} from 'react';
 import {BrowserRouter, Navigate, Route, Routes} from 'react-router-dom';
 import {I18nextProvider} from 'react-i18next';
 import i18n from './i18n';
@@ -11,10 +11,32 @@ import CustomChatEditor from './components/CustomChatEditor';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './components/Login';
 import Register from './components/Register';
+import { UserContext } from './UserContext';
 
-const App = () => {
+const App = () => {  
+  const {userSettings, setUserSettings} = useContext(UserContext);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  useEffect(()=>{
+      if(windowWidth < 800){
+        toggleSidebarCollapse();
+      }else{
+        setIsSidebarCollapsed(false)
+      }
+  },[windowWidth])
 
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+  
+    window.addEventListener('resize', handleResize);
+  
+    handleResize();
+  
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+    
   const toggleSidebarCollapse = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };
@@ -39,11 +61,16 @@ const App = () => {
           <div className="App dark:bg-gray-900 dark:text-gray-100">
             <ToastContainer/>
             <div className="flex overflow-hidden w-full h-full relative z-0">
-              <Sidebar
+              {
+                userSettings.token ? (
+                  <Sidebar
                   className="sidebar-container flex-shrink-0"
                   isSidebarCollapsed={isSidebarCollapsed}
-                  toggleSidebarCollapse={toggleSidebarCollapse}
-              />
+                  toggleSidebarCollapse={toggleSidebarCollapse}/>
+                ):(
+                  <></>
+                )
+              }
               <div className="flex-grow h-full overflow-hidden">
                 <Routes>
                   <Route path="/" element={<ProtectedRoute><MainPageWithProps/></ProtectedRoute>}/>

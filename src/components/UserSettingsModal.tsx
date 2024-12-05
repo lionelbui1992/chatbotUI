@@ -4,12 +4,14 @@ import {
   Cog6ToothIcon,
   DocumentTextIcon,
   XMarkIcon,
-  ArrowLeftOnRectangleIcon
+  ArrowLeftOnRectangleIcon,
+  ChevronLeftIcon, 
+  ChevronRightIcon
 } from "@heroicons/react/24/outline";
 import {Theme, UserContext} from '../UserContext';
 import ModelSelect from './ModelSelect';
 import {EditableField} from "./EditableField";
-import './UserSettingsModal.css';
+import '../assets/styles/UserSettingsModal.css';
 import {GOOGLE_CLIENT_ID, GOOGLE_DEVELOPER_KEY, OPENAI_DEFAULT_SYSTEM_PROMPT} from "../config";
 import ConversationService from "../service/ConversationService";
 import {NotificationService} from "../service/NotificationService";
@@ -91,12 +93,14 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({isVisible, onClose
   const [selectedDetails, setSelectedDetails] = useState<GoogleSelectedDetails[]>([]);
   const [authToken, setAuthToken] = useState(userSettings.googleAccessToken);
   const [sellectedDriveInfo,setSelectedDriveInfo] = useState(userSettings.googleSelectedDetails);
-  
+  const [isLoading,setIsLoading] = useState(false);
+  const [showBar,setShowBar] = useState(false)
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
 const navigate = useNavigate();
 
   useEffect(()=>{
     if(Array(sellectedDriveInfo)){
-      setSelectedSheetId(sellectedDriveInfo[0]?.sheetId)
       handleSheetClick(sellectedDriveInfo[0]?.sheetId,sellectedDriveInfo[0]?.sheetName);
       setSelectedDetails(sellectedDriveInfo)
     }
@@ -273,13 +277,14 @@ const navigate = useNavigate();
 
   const handleSaveGoogleInfo = () => {
     // update user settings in context
+    onClose();
     setUserSettings({...userSettings, googleAccessToken: authToken, googleSelectedDetails: selectedDetails});
     // update google access token in backend
     if (userSettings.token) {
       UserService.updateGoogleSettings(userSettings.token, authToken, selectedDetails)
         .then((response) => {
-          console.log(response);
           if (response.status === 200) {
+            setIsLoading(false);
             NotificationService.handleSuccess("Google access token has been successfully updated.");
           } else {
             NotificationService.handleUnexpectedError(new Error('An unknown error occurred'), "Failed to update google access token");
@@ -299,6 +304,9 @@ const navigate = useNavigate();
   }
   );
   const renderStorageInfo = (value?: number | string) => value ?? t('non-applicable');
+  const showSettingLeftBar = (status:boolean)=>{
+    setShowBar(status);
+  }
   return (
       <Transition show={isVisible} as={React.Fragment}>
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 px-4">
@@ -312,10 +320,10 @@ const navigate = useNavigate();
               leaveTo="opacity-0 scale-95"
           >
             <div ref={dialogRef}
-                 className="flex flex-col bg-white dark:bg-gray-850 rounded-lg w-full max-w-md mx-auto overflow-hidden"
-                 style={{minHeight: "640px", minWidth: "43em"}}>
+                  className="flex flex-col bg-white dark:bg-gray-850 rounded-lg w-full max-w-md mx-auto overflow-hidden mx-4 min-h-640 user-setting-container"
+                    >
               <div id='user-settings-header'
-                   className="flex justify-between items-center border-b border-gray-200 p-4">
+                    className="flex justify-between items-center border-b border-gray-200 p-4 flex-wrap">
                 <h1 className="text-lg font-semibold">{t('settings-header')}</h1>
                 <button onClick={handleClose}
                         className="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">
@@ -323,7 +331,14 @@ const navigate = useNavigate();
                 </button>
               </div>
               <div id='user-settings-content' className="flex flex-1">
-                <div className="border-r border-gray-200 flex flex-col">
+                {
+                  showBar ? (
+                        <ChevronLeftIcon className="chevoright" onClick={()=>showSettingLeftBar(false)} />
+                  ):(
+                    <ChevronRightIcon className="chevoright" onClick={()=>showSettingLeftBar(true)} />
+                  )
+                }
+                <div className="border-r border-gray-200 flex-col user-setting-side-bar" style={showBar ? { display: 'flex' } : { display: 'none' }}>
                   <div
                       className={`cursor-pointer p-4 flex items-center ${activeTab === Tab.GENERAL_TAB ? 'bg-gray-200 dark:bg-gray-700' : ''}`}
                       onClick={() => setActiveTab(Tab.GENERAL_TAB)}>
@@ -359,10 +374,10 @@ const navigate = useNavigate();
                     <ArrowLeftOnRectangleIcon className="w-4 h-4 mr-3" aria-hidden="true"/>Logout
                   </div>
                 </div>
-                <div className="flex-1 p-4 flex flex-col">
+                <div className="flex-1 p-4 flex flex-col tab-content">
                   <div className={`${activeTab === Tab.GENERAL_TAB ? 'flex flex-col flex-1' : 'hidden'}`}>
                     <div className="border-b border-token-border-light pb-3 last-of-type:border-b-0">
-                      <div className="flex items-center justify-between setting-panel">
+                      <div className="flex items-center justify-between setting-panel flex-wrap">
                         <label htmlFor="theme">{t('theme-label')}</label>
                         <select id='theme' name='theme'
                                 className="custom-select dark:custom-select border-gray-300 border rounded p-2
@@ -395,9 +410,9 @@ const navigate = useNavigate();
                             defaultValueLabel={DEFAULT_MODEL}
                             editorComponent={(props) =>
                                 <ModelSelect value={userSettings.model}
-                                             onModelSelect={props.onValueChange}
-                                             models={[]} allowNone={true}
-                                             allowNoneLabel="Default"/>}
+                                              onModelSelect={props.onValueChange}
+                                              models={[]} allowNone={true}
+                                              allowNoneLabel="Default"/>}
                             onValueChange={(value: string | null) => {
                               setUserSettings({...userSettings, model: value});
                             }}
@@ -420,11 +435,11 @@ const navigate = useNavigate();
                       />
                     </div>
                   </div>
-                  <div className={`${activeTab === Tab.GOOGLE_TAB ? 'flex flex-col flex-1' : 'hidden'}`}>
+                  <div className={`${activeTab === Tab.GOOGLE_TAB ? 'flex flex-col flex-1 google-tab' : 'hidden'}`}>
                     <div className="flex flex-col flex-1">
-                      <div className="setting-panel flex justify-between">
+                      <div className="setting-panel">
                         {isSignedIn ? (
-                          <div className="flex flex-row flex-1 justify-between">
+                          <div className="google-button-setting">
                             <button onClick={handleSignOutClick} className="py-2 px-4 bg-red-500 text-white rounded hover:bg-red-700">Sign Out</button>
                             <button onClick={handleSaveGoogleInfo} className="rounded-md border dark:border-white/20 py-2 px-4">Save</button>
                           </div>
@@ -435,7 +450,7 @@ const navigate = useNavigate();
                       <div className="setting-panel flex justify-between">
                         {isSignedIn && (
                           <div className='w-full'>
-                            <h3>Sheets name:</h3>
+                            <h3 >Sheets name:</h3>
                             <input
                               className="flex-grow rounded-md border dark:text-gray-100 dark:bg-gray-850 dark:border-white/20 px-2 py-1 w-full"
                               type="text"
@@ -455,7 +470,7 @@ const navigate = useNavigate();
                             </ul>
                             {selectedSheetId && (
                               <div>
-                                <h4 className="mt-3">Selected Sheet ID: {selectedSheetId}</h4>
+                                <h4 className="mt-3 break-all">Selected Sheet ID: {selectedSheetId}</h4>
                                 <ul className="google-sheet-list rounded-md border dark:text-gray-100 dark:bg-gray-850 dark:border-white/20 mt-3 py-2 px-2">
                                   {sheetDetails.map((detail: GoogleSheet, index: number) => (
                                     <li
